@@ -22,19 +22,57 @@
 package io.crate.types;
 
 import io.crate.Streamer;
+import io.crate.common.annotations.VisibleForTesting;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class NumericType extends DataType<BigDecimal> implements Streamer<BigDecimal> {
 
-    public static final NumericType INSTANCE = new NumericType();
     public static final int ID = 22;
+    public static final NumericType INSTANCE = new NumericType(null, null); // unscaled
 
-    private NumericType() {
+    public static NumericType of(int precision) {
+        return new NumericType(precision, null);
+    }
+
+    public static NumericType of(int precision, int scale) {
+        return new NumericType(precision, scale);
+    }
+
+    public static DataType<?> of(List<Integer> parameters) {
+        if (parameters.isEmpty() || parameters.size() > 2) {
+            throw new IllegalArgumentException(
+                "The numeric type support one or two parameter arguments, received: " +
+                parameters.size()
+            );
+        }
+        if (parameters.size() == 1) {
+            return of(parameters.get(0));
+        } else {
+            return of(parameters.get(0), parameters.get(1));
+        }
+    }
+
+    private final Integer scale;
+    private final Integer precision;
+
+    private NumericType(Integer precision, Integer scale) {
+        this.precision = precision;
+        this.scale = scale;
+    }
+
+    public NumericType(StreamInput in) throws IOException {
+        this.precision = in.readOptionalVInt();
+        this.scale = in.readOptionalVInt();
     }
 
     @Override
@@ -61,17 +99,25 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
     public BigDecimal implicitCast(Object value) throws IllegalArgumentException, ClassCastException {
         if (value == null) {
             return null;
-        } else if (value instanceof BigDecimal) {
-            return (BigDecimal) value;
-        } else if (value instanceof String) {
-            return new BigDecimal((String) value);
-        } else if (value instanceof Long
-                   || value instanceof Byte
-                   || value instanceof Integer
-                   || value instanceof Short) {
-            return BigDecimal.valueOf(((Number) value).longValue());
-        } else if (value instanceof Float || value instanceof Double) {
-            return BigDecimal.valueOf(((Number) value).doubleValue());
+        }
+
+        var mathContext = mathContextOrDefault();
+        if (value instanceof Long
+            || value instanceof Byte
+            || value instanceof Integer
+            || value instanceof Short) {
+            return new BigDecimal(
+                BigInteger.valueOf(((Number) value).longValue()),
+                mathContext
+            ).setScale(scaleOrDefault(), mathContext.getRoundingMode());
+        } else if (value instanceof String
+                   || value instanceof Float
+                   || value instanceof Double
+                   || value instanceof BigDecimal) {
+            return new BigDecimal(
+                value.toString(),
+                mathContext
+            ).setScale(scaleOrDefault(), mathContext.getRoundingMode());
         } else {
             throw new ClassCastException("Can't cast '" + value + "' to " + getName());
         }
@@ -87,21 +133,103 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
     }
 
     @Override
+    public BigDecimal valueForInsert(Object value) {
+        throw new UnsupportedOperationException(
+            getName() + " type cannot be used in insert statements");
+    }
+
+    public static long size(@Nonnull BigDecimal value) {
+        // BigInteger overhead 20 bytes
+        // BigDecimal overhead 16 bytes
+        // size of unscaled value
+        return 36 + value.unscaledValue().bitLength() / 8 + 1;
+    }
+
+    @VisibleForTesting
+    Integer scale() {
+        return scale;
+    }
+
+    @VisibleForTesting
+    Integer precision() {
+        return precision;
+    }
+
+    private MathContext mathContextOrDefault() {
+        if (precision == null) {
+            return MathContext.UNLIMITED;
+        } else {
+            return new MathContext(precision);
+        }
+    }
+
+    private int scaleOrDefault() {
+        return Objects.requireNonNullElse(scale, 0);
+    }
+
+    private boolean unscaled() {
+        return precision == null;
+    }
+
+    @Override
+    public TypeSignature getTypeSignature() {
+        if (unscaled()) {
+            return super.getTypeSignature();
+        } else {
+            ArrayList<TypeSignature> parameters = new ArrayList<>();
+            parameters.add(TypeSignature.of(precision));
+            if (scale != null) {
+                parameters.add(TypeSignature.of(scale));
+            }
+            return new TypeSignature(getName(), parameters);
+        }
+    }
+
+    @Override
+    public List<DataType<?>> getTypeParameters() {
+        if (unscaled()) {
+            return List.of();
+        } else {
+            if (scale != null) {
+                return List.of(DataTypes.INTEGER);
+            } else {
+                return List.of(DataTypes.INTEGER, DataTypes.INTEGER);
+            }
+        }
+    }
+
+    @Override
     public int compare(BigDecimal o1, BigDecimal o2) {
         return o1.compareTo(o2);
     }
 
     @Override
     public BigDecimal readValueFrom(StreamInput in) throws IOException {
-        byte[] bytes = new byte[in.readVInt()];
-        in.readBytes(bytes, 0, bytes.length);
-        return new BigDecimal(new BigInteger(bytes), 0);
+        if (in.readBoolean()) {
+            byte[] bytes = in.readByteArray();
+            return new BigDecimal(
+                new BigInteger(bytes),
+                scaleOrDefault(),
+                mathContextOrDefault()
+            );
+        } else {
+            return null;
+        }
     }
 
     @Override
     public void writeValueTo(StreamOutput out, BigDecimal v) throws IOException {
-        var bytes = v.unscaledValue().toByteArray();
-        out.writeVInt(bytes.length);
-        out.writeBytes(bytes);
+        if (v != null) {
+            out.writeBoolean(true);
+            out.writeByteArray(v.unscaledValue().toByteArray());
+        } else {
+            out.writeBoolean(false);
+        }
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        out.writeOptionalVInt(precision);
+        out.writeOptionalVInt(scale);
     }
 }
