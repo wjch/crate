@@ -637,6 +637,17 @@ For example, you might insert an object containing an array like so::
 Arrays inside object can be selected like any other object property using
 ``locations['property']``, where ``property`` is property name::
 
+    cr> select name, inhabitants from locations
+    ... where inhabitants is not null
+    ... order by name;
+    +-------------------+---------------------------------------------------------------------------------------+
+    | name              | information                                                                           |
+    +-------------------+---------------------------------------------------------------------------------------+
+    | North West Ripple | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}] |
+    | Outer Eastern Rim | [{"evolution_level": 2, "population": 5673745846}]                                    |
+    +-------------------+---------------------------------------------------------------------------------------+
+    SELECT 3 rows in set (... sec)
+
     cr> select name, inhabitants['interests'] from locations
     ... where inhabitants['interests'] is not null
     ... order by name;
@@ -658,8 +669,8 @@ Arrays inside object can be selected like any other object property using
 Array elements can selected with ``locations[n]['property']``, where
 `n`` is the array index and ``property`` is property name:
 
-    cr> select name, inhabitants[1]['interests'] from locations
-    ... where inhabitants['interests'] is not null
+    cr> select name, inhabitants[1]['population'] from locations
+    ... where inhabitants['population'] is not null
     ... order by name;
     +-------------------+---------------------------+
     | name              | information['population'] |
@@ -671,10 +682,12 @@ Array elements can selected with ``locations[n]['property']``, where
     +-------------------+---------------------------+
     SELECT 4 rows in set (... sec)
 
+.. TODO: this needs to use a['tags']::text[][1] syntax I think
+
 Array elements can be queried, like so:
 
-    cr> select name, inhabitants['interests'][1] from locations
-    ... where inhabitants['interests'][1] = 'mountains'
+    cr> select name, inhabitants[1]['population'] from locations
+    ... where inhabitants[1]['population'] = 'mountains'
     ... order by name;
     +-------------------+------------------------------+
     | name              | information[1]['population'] |
