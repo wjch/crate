@@ -182,13 +182,13 @@ def setUpLocations(test):
     setUp(test)
     _execute_sql("""
         create table locations (
-          id string primary key,
+          id integer primary key,
           name string,
           "date" timestamp with time zone,
           kind string,
           position integer,
           description string,
-          race object(dynamic) as (
+          inhabitants object(dynamic) as (
             interests array(string),
             description string,
             name string
@@ -198,6 +198,7 @@ def setUpLocations(test):
               evolution_level short
             )
           ),
+          landmarks array(string),
           index name_description_ft using fulltext(name, description) with (analyzer='english')
         ) clustered by(id) into 2 shards with (number_of_replicas=0)""".strip())
     _execute_sql("delete from locations")

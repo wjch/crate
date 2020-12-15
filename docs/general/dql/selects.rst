@@ -20,25 +20,26 @@ Introduction
 
 A simple select::
 
-    cr> select name, position from locations order by id limit 2;
-    +-------------------+----------+
-    | name              | position |
-    +-------------------+----------+
-    | North West Ripple | 1        |
-    | Algol             | 1        |
-    +-------------------+----------+
+    cr> select id, name from locations order by id limit 2;
+    +----+-------------------+
+    | id | name              |
+    +----+-------------------+
+    |  1 | North West Ripple |
+    |  2 | Outer Eastern Rim |
+    +----+-------------------+
     SELECT 2 rows in set (... sec)
 
 If the '*' operator is used, all columns defined in the schema are returned for
 each row::
 
     cr> select * from locations order by id limit 2;
-    +----+-------------------+--------------+--------+----------+---------...-+-------...-+-------------+
-    | id | name              |         date | kind   | position | description | inhabitants      | information |
-    +----+-------------------+--------------+--------+----------+---------...-+-------...-+-------------+
-    | 10 | Arkintoofle Minor | 308534400000 | Planet |        3 | Motivate... | {"desc... |        NULL |
-    +----+-------------------+--------------+--------+----------+---------...-+-------...-+-------------+
-    SELECT 1 row in set (... sec)
+    +----+-------------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------+---------------------------------------------------------------------------------------+-----------+
+    | id | name              |         date | kind   | position | description                                                                                                                                                  | inhabitants | information                                                                           | landmarks |
+    +----+-------------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------+---------------------------------------------------------------------------------------+-----------+
+    |  1 | North West Ripple | 308534400000 | Galaxy |        1 | Relative to life on NowWhat, living on an affluent world in the North West ripple of the Galaxy is said to be easier by a factor of about seventeen million. |        NULL | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}] |      NULL |
+    |  2 | Outer Eastern Rim | 308534400000 | Galaxy |        2 | The Outer Eastern Rim of the Galaxy where the Guide has supplanted the Encyclopedia Galactica among its more relaxed civilisations.                          |        NULL | [{"evolution_level": 2, "population": 5673745846}]                                    |      NULL |
+    +----+-------------------+--------------+--------+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------+---------------------------------------------------------------------------------------+-----------+
+    SELECT 2 rows in set (... sec)
 
 Aliases can be used to change the output name of the columns::
 
@@ -184,8 +185,8 @@ The following example uses one of the supported ISO date formats::
     +--------------+----------+
     | date         | position |
     +--------------+----------+
-    | 308534400000 | 1        |
-    | 308534400000 | 2        |
+    | 308534400000 |        1 |
+    | 308534400000 |        2 |
     +--------------+----------+
     SELECT 2 rows in set (... sec)
 
@@ -511,15 +512,27 @@ to select and query array elements using subscript expression.
 For example, you might insert an array like so::
 
     cr> insert into locations (id, name, position, kind, landmarks)
-    ... values ('14', 'Vienna', 4, 'City',
+    ... values (14, 'Vienna', 4, 'City',
     ...     ['Danube', 'Schönbrunn']
     ... );
     INSERT OK, 1 row affected (... sec)
 
 .. Hidden: refresh locations
 
-   cr> refresh table locations;
-   REFRESH OK, 1 row affected (... sec)
+    cr> refresh table locations;
+    REFRESH OK, 1 row affected (... sec)
+
+::
+
+    cr> select name, landmarks from locations
+    ... where landmarks is not null
+    ... order by name;
+    +--------+--------------------------+
+    | name   | landmarks                |
+    +--------+--------------------------+
+    | Vienna | ["Danube", "Schönbrunn"] |
+    +--------+--------------------------+
+    SELECT 1 row in set (... sec)
 
 Subsequently, array elements can be selected with ``landmarks[n]``, where ``n``
 is the array index, like so:
@@ -527,34 +540,28 @@ is the array index, like so:
     cr> select name, landmarks[1] from locations
     ... where landmarks is not null
     ... order by name;
-    +-------------------+------------------------------+
-    | name              | information[1]['population'] |
-    +-------------------+------------------------------+
-    | Berlin            |                      3600001 |
-    | Dornbirn          |                        27001 |
-    | North West Ripple |                           12 |
-    | Outer Eastern Rim |                   5673745846 |
-    +-------------------+------------------------------+
-    SELECT 4 rows in set (... sec)
+    +--------+--------------+
+    | name   | landmarks[1] |
+    +--------+--------------+
+    | Vienna | Danube       |
+    +--------+--------------+
+    SELECT 1 row in set (... sec)
 
 Array elements can be selected directly using am integer. The first index value
 is `1``. The maximum array index is ``2147483648``. Using an index greater than
 the array size results in a NULL value.
 
-Array elements can be queried, like so:
+Array elements can be queried, like so::
 
     cr> select name, landmarks[1] from locations
     ... where landmarks[1] = 'Danube'
     ... order by name;
-    +-------------------+------------------------------+
-    | name              | information[1]['population'] |
-    +-------------------+------------------------------+
-    | Berlin            |                      3600001 |
-    | Dornbirn          |                        27001 |
-    | North West Ripple |                           12 |
-    | Outer Eastern Rim |                   5673745846 |
-    +-------------------+------------------------------+
-    SELECT 4 rows in set (... sec)
+    +--------+--------------+
+    | name   | landmarks[1] |
+    +--------+--------------+
+    | Vienna | Danube       |
+    +--------+--------------+
+    SELECT 1 row in set (... sec)
 
 When using the ``=`` operator, the specific value of the element at each array
 index ``n`` is used for comparison. To match any array element, see
@@ -579,7 +586,7 @@ to select and query objects properties.
 For example, you might insert an object like so::
 
     cr> insert into locations (id, name, position, kind, inhabitants)
-    ... values ('15', 'Paris', 2, 'City',
+    ... values (15, 'Paris', 2, 'City',
     ...     {name = 'Parisans',
     ...      description = 'Fond of cheese and long loafs of bread'}
     ... );
@@ -587,29 +594,45 @@ For example, you might insert an object like so::
 
 .. Hidden: refresh locations
 
-   cr> refresh table locations;
-   REFRESH OK, 1 row affected (... sec)
+    cr> refresh table locations;
+    REFRESH OK, 1 row affected (... sec)
+
+::
+
+    cr> select name, inhabitants from locations
+    ... where inhabitants is not null;
+    +-------------------+-----------------------------------------------------------------------------------------------------------------+
+    | name              | inhabitants                                                                                                     |
+    +-------------------+-----------------------------------------------------------------------------------------------------------------+
+    | Arkintoofle Minor | {"description": "Giants, but with single eye.", "interests": ["baseball", "short stories"], "name": "Minories"} |
+    | Bartledan         | {"description": "Similar to humans, but do not breathe", "interests": ["netball"], "name": "Bartledannians"}    |
+    | Paris             | {"description": "Fond of cheese and long loafs of bread", "name": "Parisans"}                                   |
+    +-------------------+-----------------------------------------------------------------------------------------------------------------+
+    SELECT 3 rows in set (... sec)
 
 Subsequently, object properties can be selected with
 ``inhabitants['property']``, where ``property`` is the property name, like so::
 
-    cr> select name, inhabitants['name'] from locations where name = 'Dornbirn';
-    +----------+--------------+
-    | name     | inhabitants['name'] |
-    +----------+--------------+
-    | Dornbirn | Vorarlberger |
-    +----------+--------------+
-    SELECT 1 row in set (... sec)
+    cr> select name, inhabitants['name'] from locations
+    ... where inhabitants is not null;
+    +-------------------+---------------------+
+    | name              | inhabitants['name'] |
+    +-------------------+---------------------+
+    | Arkintoofle Minor | Minories            |
+    | Bartledan         | Bartledannians      |
+    | Paris             | Parisans            |
+    +-------------------+---------------------+
+    SELECT 3 rows in set (... sec)
 
 Object property can be queried, like so::
 
     cr> select name, inhabitants['name'] from locations
-    ... where inhabitants['name'] = 'Vorarlberger';
-    +----------+--------------+
-    | name     | inhabitants['name'] |
-    +----------+--------------+
-    | Dornbirn | Vorarlberger |
-    +----------+--------------+
+    ... where inhabitants['name'] = 'Parisans';
+    +-------+---------------------+
+    | name  | inhabitants['name'] |
+    +-------+---------------------+
+    | Paris | Parisans            |
+    +-------+---------------------+
     SELECT 1 row in set (... sec)
 
 
@@ -623,16 +646,17 @@ Objects may contain arrays, and these arrays can be queried and selected.
 For example, you might insert an object containing an array like so::
 
     cr> insert into locations (id, name, position, kind, inhabitants)
-    ... values ('16', 'Dornbirn', 4, 'City',
+    ... values (16, 'Dornbirn', 4, 'City',
     ...     {name = 'Vorarlberger',
+    ...      description = 'Very nice people with a strange accent',
     ...      interests = ['mountains', 'cheese', 'enzian']}
     ... );
     INSERT OK, 1 row affected (... sec)
 
 .. Hidden: refresh locations
 
-   cr> refresh table locations;
-   REFRESH OK, 1 row affected (... sec)
+    cr> refresh table locations;
+    REFRESH OK, 1 row affected (... sec)
 
 Arrays inside object can be selected like any other object property using
 ``locations['property']``, where ``property`` is property name::
@@ -640,23 +664,28 @@ Arrays inside object can be selected like any other object property using
     cr> select name, inhabitants from locations
     ... where inhabitants is not null
     ... order by name;
-    +-------------------+---------------------------------------------------------------------------------------+
-    | name              | information                                                                           |
-    +-------------------+---------------------------------------------------------------------------------------+
-    | North West Ripple | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}] |
-    | Outer Eastern Rim | [{"evolution_level": 2, "population": 5673745846}]                                    |
-    +-------------------+---------------------------------------------------------------------------------------+
-    SELECT 3 rows in set (... sec)
+    +-------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | name              | inhabitants                                                                                                                       |
+    +-------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | Arkintoofle Minor | {"description": "Giants, but with single eye.", "interests": ["baseball", "short stories"], "name": "Minories"}                   |
+    | Bartledan         | {"description": "Similar to humans, but do not breathe", "interests": ["netball"], "name": "Bartledannians"}                      |
+    | Dornbirn          | {"description": "Very nice people with a strange accent", "interests": ["mountains", "cheese", "enzian"], "name": "Vorarlberger"} |
+    | Paris             | {"description": "Fond of cheese and long loafs of bread", "name": "Parisans"}                                                     |
+    +-------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    SELECT 4 rows in set (... sec)
+
+::
 
     cr> select name, inhabitants['interests'] from locations
     ... where inhabitants['interests'] is not null
     ... order by name;
-    +-------------------+---------------------------------------------------------------------------------------+
-    | name              | information                                                                           |
-    +-------------------+---------------------------------------------------------------------------------------+
-    | North West Ripple | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}] |
-    | Outer Eastern Rim | [{"evolution_level": 2, "population": 5673745846}]                                    |
-    +-------------------+---------------------------------------------------------------------------------------+
+    +-------------------+-----------------------------------+
+    | name              | inhabitants['interests']          |
+    +-------------------+-----------------------------------+
+    | Arkintoofle Minor | ["baseball", "short stories"]     |
+    | Bartledan         | ["netball"]                       |
+    | Dornbirn          | ["mountains", "cheese", "enzian"] |
+    +-------------------+-----------------------------------+
     SELECT 3 rows in set (... sec)
 
 .. TIP::
@@ -669,35 +698,31 @@ Arrays inside object can be selected like any other object property using
 Array elements can selected with ``locations[n]['property']``, where
 `n`` is the array index and ``property`` is property name:
 
-    cr> select name, inhabitants[1]['population'] from locations
-    ... where inhabitants['population'] is not null
+    cr> select name, inhabitants[1]['interests'] from locations
+    ... where inhabitants['interests'] is not null
     ... order by name;
-    +-------------------+---------------------------+
-    | name              | information['population'] |
-    +-------------------+---------------------------+
-    | Berlin            | [3600001, 1]              |
-    | Dornbirn          | [27001]                   |
-    | North West Ripple | [12, 42]                  |
-    | Outer Eastern Rim | [5673745846]              |
-    +-------------------+---------------------------+
-    SELECT 4 rows in set (... sec)
+    +-------------------+-----------------------------+
+    | name              | inhabitants[1]['interests'] |
+    +-------------------+-----------------------------+
+    | Arkintoofle Minor | baseball                    |
+    | Bartledan         | netball                     |
+    | Dornbirn          | mountains                   |
+    +-------------------+-----------------------------+
+    SELECT 3 rows in set (... sec)
 
 .. TODO: this needs to use a['tags']::text[][1] syntax I think
 
 Array elements can be queried, like so:
 
-    cr> select name, inhabitants[1]['population'] from locations
-    ... where inhabitants[1]['population'] = 'mountains'
+    cr> select name, inhabitants[1]['interests'] from locations
+    ... where inhabitants[1]['interests'] = 'mountains'
     ... order by name;
-    +-------------------+------------------------------+
-    | name              | information[1]['population'] |
-    +-------------------+------------------------------+
-    | Berlin            |                      3600001 |
-    | Dornbirn          |                        27001 |
-    | North West Ripple |                           12 |
-    | Outer Eastern Rim |                   5673745846 |
-    +-------------------+------------------------------+
-    SELECT 4 rows in set (... sec)
+    +----------+-----------------------------+
+    | name     | inhabitants[1]['interests'] |
+    +----------+-----------------------------+
+    | Dornbirn | mountains                   |
+    +----------+-----------------------------+
+    SELECT 1 row in set (... sec)
 
 
 .. _sql_dql_object_arrays:
@@ -717,12 +742,27 @@ For example, you might insert an array of objects like so::
     ...   [{evolution_level=6, population=3600001},
     ...   {evolution_level=42, population=1}]
     ... );
-    INSERT OK, 1 row affected (... sec
+    INSERT OK, 1 row affected (... sec)
 
 .. Hidden: refresh locations
 
-   cr> refresh table locations;
-   REFRESH OK, 1 row affected (... sec)
+    cr> refresh table locations;
+    REFRESH OK, 1 row affected (... sec)
+
+::
+    cr> select name, information from locations
+    ... where information is not null
+    ... order by name;
+    +-------------------+-------------------------------------------------------------------------------------------+
+    | name              | information                                                                               |
+    +-------------------+-------------------------------------------------------------------------------------------+
+    | Berlin            | [{"evolution_level": 6, "population": 3600001}, {"evolution_level": 42, "population": 1}] |
+    | North West Ripple | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}]     |
+    | Outer Eastern Rim | [{"evolution_level": 2, "population": 5673745846}]                                        |
+    +-------------------+-------------------------------------------------------------------------------------------+
+    SELECT 3 rows in set (... sec)
+
+Notice that the first two rows contain multiple objects in the array.
 
 Objects inside arrays can be selected like any other array element using
 ``information[n]``, where ``n`` is the array index::
@@ -730,15 +770,14 @@ Objects inside arrays can be selected like any other array element using
     cr> select name, information[1] from locations
     ... where information[1] is not null
     ... order by name;
-    +-------------------+---------------------------+
-    | name              | information['population'] |
-    +-------------------+---------------------------+
-    | Berlin            | [3600001, 1]              |
-    | Dornbirn          | [27001]                   |
-    | North West Ripple | [12, 42]                  |
-    | Outer Eastern Rim | [5673745846]              |
-    +-------------------+---------------------------+
-    SELECT 4 rows in set (... sec)
+    +-------------------+--------------------------------------------------+
+    | name              | information[1]                                   |
+    +-------------------+--------------------------------------------------+
+    | Berlin            | {"evolution_level": 6, "population": 3600001}    |
+    | North West Ripple | {"evolution_level": 4, "population": 12}         |
+    | Outer Eastern Rim | {"evolution_level": 2, "population": 5673745846} |
+    +-------------------+--------------------------------------------------+
+    SELECT 3 rows in set (... sec)
 
 .. TODO: not sure this is accurate. see note about ambiguous syntax above
 
@@ -749,15 +788,14 @@ is the object property::
     cr> select name, information[1]['population'] from locations
     ... where information[1]['population'] is not null
     ... order by name;
-    +-------------------+---------------------------+
-    | name              | information['population'] |
-    +-------------------+---------------------------+
-    | Berlin            | [3600001, 1]              |
-    | Dornbirn          | [27001]                   |
-    | North West Ripple | [12, 42]                  |
-    | Outer Eastern Rim | [5673745846]              |
-    +-------------------+---------------------------+
-    SELECT 4 rows in set (... sec)
+    +-------------------+------------------------------+
+    | name              | information[1]['population'] |
+    +-------------------+------------------------------+
+    | Berlin            |                      3600001 |
+    | North West Ripple |                           12 |
+    | Outer Eastern Rim |                   5673745846 |
+    +-------------------+------------------------------+
+    SELECT 3 rows in set (... sec)
 
 Additionally, you can query properties of *every* object within an array by
 omitting the array index, like so::
@@ -769,11 +807,10 @@ omitting the array index, like so::
     | name              | information['population'] |
     +-------------------+---------------------------+
     | Berlin            | [3600001, 1]              |
-    | Dornbirn          | [27001]                   |
     | North West Ripple | [12, 42]                  |
     | Outer Eastern Rim | [5673745846]              |
     +-------------------+---------------------------+
-    SELECT 4 rows in set (... sec)
+    SELECT 3 rows in set (... sec)
 
 .. NOTE::
 
@@ -795,23 +832,23 @@ contains the element 'netball'::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where 'netball' = ANY(inhabitants['interests']);
-    +----------------+-----------------------------------------+
-    | inhabitants['name']   | inhabitants['interests']                       |
-    +----------------+-----------------------------------------+
-    | Bartledannians | ["netball", "books with 100.000 words"] |
-    +----------------+-----------------------------------------+
+    +---------------------+--------------------------+
+    | inhabitants['name'] | inhabitants['interests'] |
+    +---------------------+--------------------------+
+    | Bartledannians      | ["netball"]              |
+    +---------------------+--------------------------+
     SELECT 1 row in set (... sec)
 
 This query combines the ``ANY`` function with the :ref:`LIKE <like-ilike>``
 operator::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
-    ... where 'books%' LIKE ANY(inhabitants['interests']);
-    +----------------+-----------------------------------------+
-    | inhabitants['name']   | inhabitants['interests']                       |
-    +----------------+-----------------------------------------+
-    | Bartledannians | ["netball", "books with 100.000 words"] |
-    +----------------+-----------------------------------------+
+    ... where '%stories%' LIKE ANY(inhabitants['interests']);
+    +---------------------+-------------------------------+
+    | inhabitants['name'] | inhabitants['interests']      |
+    +---------------------+-------------------------------+
+    | Minories            | ["baseball", "short stories"] |
+    +---------------------+-------------------------------+
     SELECT 1 row in set (... sec)
 
 This query passes a literal array value to the ``ANY`` function:
@@ -819,12 +856,12 @@ This query passes a literal array value to the ``ANY`` function:
     cr> select name, inhabitants['interests'] from locations
     ... where name = ANY(ARRAY['Bartledan', 'Algol'])
     ... order by name asc;
-    +-----------+-----------------------------------------+
-    | name      | inhabitants['interests']                       |
-    +-----------+-----------------------------------------+
-    | Algol     | NULL                                    |
-    | Bartledan | ["netball", "books with 100.000 words"] |
-    +-----------+-----------------------------------------+
+    +-----------+--------------------------+
+    | name      | inhabitants['interests'] |
+    +-----------+--------------------------+
+    | Algol     | NULL                     |
+    | Bartledan | ["netball"]              |
+    +-----------+--------------------------+
     SELECT 2 rows in set (... sec)
 
 This query selects any locations with at least one (i.e., :ref:`ANY
@@ -837,10 +874,9 @@ This query selects any locations with at least one (i.e., :ref:`ANY
     | name              | information['population'] |
     +-------------------+---------------------------+
     | Berlin            | [3600001, 1]              |
-    | Dornbirn          | [27001]                   |
     | Outer Eastern Rim | [5673745846]              |
     +-------------------+---------------------------+
-    SELECT 3 rows in set (... sec)
+    SELECT 2 rows in set (... sec)
 
 .. NOTE::
 
@@ -864,11 +900,11 @@ has at least one element that equals 'netball'*::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where 'netball' = ANY(inhabitants['interests']);
-    +----------------+-----------------------------------------+
-    | inhabitants['name']   | inhabitants['interests']                       |
-    +----------------+-----------------------------------------+
-    | Bartledannians | ["netball", "books with 100.000 words"] |
-    +----------------+-----------------------------------------+
+    +---------------------+--------------------------+
+    | inhabitants['name'] | inhabitants['interests'] |
+    +---------------------+--------------------------+
+    | Bartledannians      | ["netball"]              |
+    +---------------------+--------------------------+
     SELECT 1 row in set (... sec)
 
 The following query using the negated operator ``!=`` can be translated to *get
@@ -877,12 +913,12 @@ equal 'netball'*. As you see, the result is the same in this case::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where 'netball' != ANY(inhabitants['interests']);
-    +----------------+-----------------------------------------+
-    | inhabitants['name']   | inhabitants['interests']                       |
-    +----------------+-----------------------------------------+
-    | Minories       | ["baseball", "short stories"]           |
-    | Bartledannians | ["netball", "books with 100.000 words"] |
-    +----------------+-----------------------------------------+
+    +---------------------+-----------------------------------+
+    | inhabitants['name'] | inhabitants['interests']          |
+    +---------------------+-----------------------------------+
+    | Minories            | ["baseball", "short stories"]     |
+    | Vorarlberger        | ["mountains", "cheese", "enzian"] |
+    +---------------------+-----------------------------------+
     SELECT 2 rows in set (... sec)
 
 .. NOTE::
@@ -898,13 +934,14 @@ to *get all rows where inhabitants['interests'] has no value that equals
 'netball'*::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
-    ... where not 'netball' = ANY(inhabitants['interests']) order by inhabitants['name'];
-    +--------------+-------------------------------+
-    | inhabitants['name'] | inhabitants['interests']             |
-    +--------------+-------------------------------+
-    | Minories     | ["baseball", "short stories"] |
-    +--------------+-------------------------------+
-    SELECT 1 row in set (... sec)
+    ... where not 'netball' = ANY(inhabitants['interests']);
+    +---------------------+-----------------------------------+
+    | inhabitants['name'] | inhabitants['interests']          |
+    +---------------------+-----------------------------------+
+    | Minories            | ["baseball", "short stories"]     |
+    | Vorarlberger        | ["mountains", "cheese", "enzian"] |
+    +---------------------+-----------------------------------+
+    SELECT 2 rows in set (... sec)
 
 .. TIP::
 
@@ -1018,7 +1055,7 @@ Some Examples::
     +----------+
     | count(*) |
     +----------+
-    | 15       |
+    |       17 |
     +----------+
     SELECT 1 row in set (... sec)
 
@@ -1028,7 +1065,7 @@ Some Examples::
     +----------+
     | count(*) |
     +----------+
-    | 5        |
+    |        5 |
     +----------+
     SELECT 1 row in set (... sec)
 
@@ -1038,18 +1075,18 @@ Some Examples::
     +-------------+----------+
     | count(name) | count(*) |
     +-------------+----------+
-    | 14          | 15       |
+    |          16 |       17 |
     +-------------+----------+
     SELECT 1 row in set (... sec)
 
 ::
 
     cr> select max(name) from locations;
-    +-------------------+
-    | max(name)         |
-    +-------------------+
-    | Outer Eastern Rim |
-    +-------------------+
+    +-----------+
+    | max(name) |
+    +-----------+
+    | Vienna    |
+    +-----------+
     SELECT 1 row in set (... sec)
 
 ::
@@ -1069,10 +1106,10 @@ Some Examples::
     +----------+-------------+
     | count(*) | kind        |
     +----------+-------------+
-    | 2        | City        |
-    | 4        | Galaxy      |
-    | 5        | Planet      |
-    | 4        | Star System |
+    |        4 | City        |
+    |        4 | Galaxy      |
+    |        5 | Planet      |
+    |        4 | Star System |
     +----------+-------------+
     SELECT 4 rows in set (... sec)
 
@@ -1083,10 +1120,10 @@ Some Examples::
     +---------------+-------------+
     | max(position) | kind        |
     +---------------+-------------+
-    | 6             | Galaxy      |
-    | 5             | Planet      |
-    | 4             | Star System |
-    | 4             | City        |
+    |            6  | Galaxy      |
+    |            5  | Planet      |
+    |            4  | Star System |
+    |            4  | City        |
     +---------------+-------------+
     SELECT 4 rows in set (... sec)
 
@@ -1111,10 +1148,10 @@ Some Examples::
     +----------+------------------------------------+-------------+
     | count(*) | min(name)                          | kind        |
     +----------+------------------------------------+-------------+
-    | 2        | Berlin                             | City        |
-    | 4        | Galactic Sector QQ7 Active J Gamma | Galaxy      |
-    | 5        |                                    | Planet      |
-    | 4        | Aldebaran                          | Star System |
+    |        4 | Berlin                             | City        |
+    |        4 | Galactic Sector QQ7 Active J Gamma | Galaxy      |
+    |        5 |                                    | Planet      |
+    |        4 | Aldebaran                          | Star System |
     +----------+------------------------------------+-------------+
     SELECT 4 rows in set (... sec)
 
@@ -1125,9 +1162,9 @@ Some Examples::
     +---------------+-------------+
     | sum_positions | kind        |
     +---------------+-------------+
-    |             7 | City        |
     |            10 | Star System |
     |            13 | Galaxy      |
+    |            13 | City        |
     |            15 | Planet      |
     +---------------+-------------+
     SELECT 4 rows in set (... sec)
@@ -1138,27 +1175,29 @@ Window functions
 CrateDB supports the :ref:`OVER <over>` clause to enable the execution of
 :ref:`window functions <window-functions>`::
 
-   cr> select sum(position) OVER() AS pos_sum, name from locations order by name;
-   +---------+------------------------------------+
-   | pos_sum | name                               |
-   +---------+------------------------------------+
-   |      45 |                                    |
-   |      45 | Aldebaran                          |
-   |      45 | Algol                              |
-   |      45 | Allosimanius Syneca                |
-   |      45 | Alpha Centauri                     |
-   |      45 | Altair                             |
-   |      45 | Argabuthon                         |
-   |      45 | Arkintoofle Minor                  |
-   |      45 | Bartledan                          |
-   |      45 | Berlin                             |
-   |      45 | Dornbirn                           |
-   |      45 | Galactic Sector QQ7 Active J Gamma |
-   |      45 | North West Ripple                  |
-   |      45 | Outer Eastern Rim                  |
-   |      45 | NULL                               |
-   +---------+------------------------------------+
-   SELECT 15 rows in set (... sec)
+    cr> select sum(position) OVER() AS pos_sum, name from locations order by name;
+    +---------+------------------------------------+
+    | pos_sum | name                               |
+    +---------+------------------------------------+
+    |      51 |                                    |
+    |      51 | Aldebaran                          |
+    |      51 | Algol                              |
+    |      51 | Allosimanius Syneca                |
+    |      51 | Alpha Centauri                     |
+    |      51 | Altair                             |
+    |      51 | Argabuthon                         |
+    |      51 | Arkintoofle Minor                  |
+    |      51 | Bartledan                          |
+    |      51 | Berlin                             |
+    |      51 | Dornbirn                           |
+    |      51 | Galactic Sector QQ7 Active J Gamma |
+    |      51 | North West Ripple                  |
+    |      51 | Outer Eastern Rim                  |
+    |      51 | Paris                              |
+    |      51 | Vienna                             |
+    |      51 | NULL                               |
+    +---------+------------------------------------+
+    SELECT 17 rows in set (... sec)
 
 .. _sql_dql_group_by:
 
@@ -1176,10 +1215,10 @@ This is useful if used in conjunction with aggregation functions::
     +----------+-------------+
     | count(*) | kind        |
     +----------+-------------+
-    | 5        | Planet      |
-    | 4        | Galaxy      |
-    | 4        | Star System |
-    | 2        | City        |
+    |        5 | Planet      |
+    |        4 | City        |
+    |        4 | Galaxy      |
+    |        4 | Star System |
     +----------+-------------+
     SELECT 4 rows in set (... sec)
 
@@ -1211,10 +1250,11 @@ A simple having clause example using an equality operator::
     +----------+-------------+
     | count(*) | kind        |
     +----------+-------------+
+    |        4 | City        |
     |        4 | Galaxy      |
     |        4 | Star System |
     +----------+-------------+
-    SELECT 2 rows in set (... sec)
+    SELECT 3 rows in set (... sec)
 
 The condition of the having clause can refer to the resulting columns of the
 group by clause.
@@ -1227,7 +1267,7 @@ result columns::
     +----------+------+
     | count(*) | kind |
     +----------+------+
-    |        2 | City |
+    |        4 | City |
     +----------+------+
     SELECT 1 row in set (... sec)
 
