@@ -532,7 +532,7 @@ For example, you might insert an array like so::
     SELECT 1 row in set (... sec)
 
 Subsequently, array elements can be selected with ``landmarks[n]``, where ``n``
-is the array index, like so:
+is the array index, like so::
 
     cr> select name, landmarks[1] from locations
     ... where landmarks is not null
@@ -693,7 +693,7 @@ Arrays inside object can be selected like any other object property using
     TODO
 
 Array elements can selected with ``locations[n]['property']``, where
-`n`` is the array index and ``property`` is property name:
+``n`` is the array index and ``property`` is property name::
 
     cr> select name, inhabitants[1]['interests'] from locations
     ... where inhabitants['interests'] is not null
@@ -709,7 +709,7 @@ Array elements can selected with ``locations[n]['property']``, where
 
 .. TODO: this needs to use a['tags']::text[][1] syntax I think
 
-Array elements can be queried, like so:
+Array elements can be queried, like so::
 
     cr> select name, inhabitants[1]['interests'] from locations
     ... where inhabitants[1]['interests'] = 'mountains'
@@ -730,8 +730,6 @@ Object within arrays
 Arrays may contain objects, and these objects can be queried and selected.
 
 For example, you might insert an array of objects like so::
-
-::
 
     cr> insert into locations (id, name, position, kind, information)
     ... values (
@@ -848,7 +846,7 @@ operator::
     +---------------------+-------------------------------+
     SELECT 1 row in set (... sec)
 
-This query passes a literal array value to the ``ANY`` function:
+This query passes a literal array value to the ``ANY`` function::
 
     cr> select name, inhabitants['interests'] from locations
     ... where name = ANY(ARRAY['Bartledan', 'Algol'])
@@ -862,7 +860,7 @@ This query passes a literal array value to the ``ANY`` function:
     SELECT 2 rows in set (... sec)
 
 This query selects any locations with at least one (i.e., :ref:`ANY
-<sql_dql_any_array>`) population figure above 100:
+<sql_dql_any_array>`) population figure above 100::
 
     cr> select name, information['population'] from locations
     ... where 100 < ANY (information['population'])
