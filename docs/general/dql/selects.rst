@@ -20,19 +20,19 @@ Introduction
 
 A simple select::
 
-    cr> select name, position from locations order by position limit 2;
+    cr> select name, position from locations order by id limit 2;
     +-------------------+----------+
     | name              | position |
     +-------------------+----------+
     | North West Ripple | 1        |
-    | Algol             | 3        |
+    | Algol             | 1        |
     +-------------------+----------+
     SELECT 2 rows in set (... sec)
 
 If the '*' operator is used, all columns defined in the schema are returned for
 each row::
 
-    cr> select * from locations order by id limit 1 offset 1;
+    cr> select * from locations order by id limit 2;
     +----+-------------------+--------------+--------+----------+---------...-+-------...-+-------------+
     | id | name              |         date | kind   | position | description | inhabitants      | information |
     +----+-------------------+--------------+--------+----------+---------...-+-------...-+-------------+
