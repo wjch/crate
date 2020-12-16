@@ -5,15 +5,20 @@
 Selecting data
 ==============
 
-Selecting (i.e. retrieving) data from CrateDB is done by using a SQL ``SELECT``
-statement. The response to a ``SELECT`` query contains the column names of the
-result, the actual result rows as a two-dimensional array of values, the row
-count and the duration.
+Selecting (i.e., retrieving) data from CrateDB can be done by using an SQL
+``SELECT`` statement. The response to a ``SELECT`` query includes the column
+names of the result, the result rows as a two-dimensional array of values, the
+row count, and the execution time.
+
+.. SEEALSO::
+
+    :ref:`SELECT syntax <sql_reference_select>`
 
 .. rubric:: Table of contents
 
 .. contents::
    :local:
+
 
 Introduction
 ============
@@ -60,8 +65,7 @@ Aliases can be used to change the output name of the columns::
 
 The ``FROM`` clause is used to reference the relation this select query is
 based upon. Can be a single table, many tables, a view, a :ref:`JOIN <sql_joins>`
-or another ``SELECT`` statement. See :ref:`SELECT Reference
-<sql_reference_select>`
+or another ``SELECT`` statement.
 
 Tables and views are referenced by schema and table name and can optionally be
 aliased.  If the relation ``t`` is only referenced by name, CrateDB assumes the
@@ -503,10 +507,10 @@ does always return ``NULL`` when comparing ``NULL``.
 Arrays
 ======
 
-CrateDB supports an :ref:`object <data-type-array>` data type. It is possible
-to select and query array elements using subscript expression.
+CrateDB supports an :ref:`array <data-type-array>` data type. It is possible
+to select and query array elements.
 
-For example, you might insert an array like so::
+For example, you might :ref:`insert <inserting_data>` an array like so::
 
     cr> insert into locations (id, name, position, kind, landmarks)
     ... values (14, 'Frogstar', 4, 'Star System',
@@ -519,11 +523,10 @@ For example, you might insert an array like so::
     cr> refresh table locations;
     REFRESH OK, 1 row affected (... sec)
 
-::
+The result::
 
     cr> select name, landmarks from locations
-    ... where landmarks is not null
-    ... order by name;
+    ... where name = 'Frogstar';
     +----------+-------------------------------------------+
     | name     | landmarks                                 |
     +----------+-------------------------------------------+
@@ -531,12 +534,11 @@ For example, you might insert an array like so::
     +----------+-------------------------------------------+
     SELECT 1 row in set (... sec)
 
-Subsequently, array elements can be selected with ``landmarks[n]``, where ``n``
-is the array index, like so::
+The individual array elements can be selected from the ``landmarks`` column
+with ``landmarks[n]``, where ``n`` is the integer array index, like so::
 
     cr> select name, landmarks[1] from locations
-    ... where landmarks is not null
-    ... order by name;
+    ... where name = 'Frogstar';
     +----------+--------------------------+
     | name     | landmarks[1]             |
     +----------+--------------------------+
@@ -544,24 +546,25 @@ is the array index, like so::
     +----------+--------------------------+
     SELECT 1 row in set (... sec)
 
-Array elements can be selected directly using am integer. The first index value
-is `1``. The maximum array index is ``2147483648``. Using an index greater than
-the array size results in a NULL value.
+.. NOTE::
 
-Array elements can be queried, like so::
+    The first index value is ``1``. The maximum array index is ``2147483648``.
+    Using an index greater than the array size results in a NULL value.
 
-    cr> select name, landmarks[1] from locations
-    ... where landmarks[1] = 'Total Perspective Vortex'
-    ... order by name;
-    +----------+--------------------------+
-    | name     | landmarks[1]             |
-    +----------+--------------------------+
-    | Frogstar | Total Perspective Vortex |
-    +----------+--------------------------+
+Individual array elements can also be addressed in the :ref:`where clause
+<sql_dql_where_clause>`, like so::
+
+    cr> select name, landmarks from locations
+    ... where landmarks[2] = 'Milliways';
+    +----------+-------------------------------------------+
+    | name     | landmarks                                 |
+    +----------+-------------------------------------------+
+    | Frogstar | ["Total Perspective Vortex", "Milliways"] |
+    +----------+-------------------------------------------+
     SELECT 1 row in set (... sec)
 
-When using the ``=`` operator, the specific value of the element at each array
-index ``n`` is used for comparison. To match any array element, see
+When using the ``=`` operator, as above, the value of the array element at
+index ``n`` is compared. To compare against *any* array element, see
 :ref:`sql_dql_any_array`.
 
 .. NOTE::
@@ -569,7 +572,7 @@ index ``n`` is used for comparison. To match any array element, see
    You can nest arrays within arrays, but you can only have one subscript value
    per expression. The following won't work:
 
-   ``select foo[1][1] from locations;``
+   ``select my_column[1][2] from my_table;``
 
 
 .. _sql_dql_objects:
@@ -578,7 +581,7 @@ Objects
 =======
 
 CrateDB supports an :ref:`object <object_data_type>` data type. It is possible
-to select and query objects properties.
+to select and query object properties.
 
 For example, you might insert an object like so::
 
@@ -594,42 +597,39 @@ For example, you might insert an object like so::
     cr> refresh table locations;
     REFRESH OK, 1 row affected (... sec)
 
-::
+The result::
 
     cr> select name, inhabitants from locations
-    ... where inhabitants is not null;
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    | name              | inhabitants                                                                                                     |
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    | Arkintoofle Minor | {"description": "Giants, but with single eye.", "interests": ["baseball", "short stories"], "name": "Minories"} |
-    | Bartledan         | {"description": "Similar to humans, but do not breathe", "interests": ["netball"], "name": "Bartledannians"}    |
-    | Betelgeuse        | {"description": "Humanoids with two heads", "name": "Betelgeuseans"}                                            |
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    SELECT 3 rows in set (... sec)
+    ... where name = 'Betelgeuse';
+    +------------+----------------------------------------------------------------------+
+    | name       | inhabitants                                                          |
+    +------------+----------------------------------------------------------------------+
+    | Betelgeuse | {"description": "Humanoids with two heads", "name": "Betelgeuseans"} |
+    +------------+----------------------------------------------------------------------+
+    SELECT 1 row in set (... sec)
 
-Subsequently, object properties can be selected with
+The object properties can be selected from the ``inhabitants`` column with
 ``inhabitants['property']``, where ``property`` is the property name, like so::
 
     cr> select name, inhabitants['name'] from locations
-    ... where inhabitants is not null;
-    +-------------------+---------------------+
-    | name              | inhabitants['name'] |
-    +-------------------+---------------------+
-    | Arkintoofle Minor | Minories            |
-    | Bartledan         | Bartledannians      |
-    | Betelgeuse        | Betelgeuseans       |
-    +-------------------+---------------------+
-    SELECT 3 rows in set (... sec)
-
-Object property can be queried, like so::
-
-    cr> select name, inhabitants['name'] from locations
-    ... where inhabitants['name'] = 'Betelgeuseans';
+    ... where name = 'Betelgeuse';
     +------------+---------------------+
     | name       | inhabitants['name'] |
     +------------+---------------------+
     | Betelgeuse | Betelgeuseans       |
     +------------+---------------------+
+    SELECT 1 row in set (... sec)
+
+Object property can also be addressed in the :ref:`where clause
+<sql_dql_where_clause>`, like so::
+
+    cr> select name, inhabitants from locations
+    ... where inhabitants['name'] = 'Betelgeuseans';
+    +------------+----------------------------------------------------------------------+
+    | name       | inhabitants                                                          |
+    +------------+----------------------------------------------------------------------+
+    | Betelgeuse | {"description": "Humanoids with two heads", "name": "Betelgeuseans"} |
+    +------------+----------------------------------------------------------------------+
     SELECT 1 row in set (... sec)
 
 
@@ -638,7 +638,7 @@ Object property can be queried, like so::
 Arrays within objects
 =====================
 
-Objects may contain arrays, and these arrays can be queried and selected.
+Objects may contain arrays, and these arrays can be selected and queried.
 
 For example, you might insert an object containing an array like so::
 
@@ -655,65 +655,36 @@ For example, you might insert an object containing an array like so::
     cr> refresh table locations;
     REFRESH OK, 1 row affected (... sec)
 
-Arrays inside object can be selected like any other object property using
-``locations['property']``, where ``property`` is property name::
+The result::
 
     cr> select name, inhabitants from locations
-    ... where inhabitants is not null
-    ... order by name;
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    | name              | inhabitants                                                                                                     |
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    | Arkintoofle Minor | {"description": "Giants, but with single eye.", "interests": ["baseball", "short stories"], "name": "Minories"} |
-    | Bartledan         | {"description": "Similar to humans, but do not breathe", "interests": ["netball"], "name": "Bartledannians"}    |
-    | Betelgeuse        | {"description": "Humanoids with two heads", "name": "Betelgeuseans"}                                            |
-    | Folfanga          | {"description": "A species of small slug", "interests": ["lettuce", "slime"], "name": "A-Rth-Urp-Hil-Ipdenu"}   |
-    +-------------------+-----------------------------------------------------------------------------------------------------------------+
-    SELECT 4 rows in set (... sec)
+    ... where name = 'Folfanga';
+      +----------+---------------------------------------------------------------------------------------------------------------+
+    | name     | inhabitants                                                                                                   |
+    +----------+---------------------------------------------------------------------------------------------------------------+
+    | Folfanga | {"description": "A species of small slug", "interests": ["lettuce", "slime"], "name": "A-Rth-Urp-Hil-Ipdenu"} |
+    +----------+---------------------------------------------------------------------------------------------------------------+
+    SELECT 1 row in set (... sec)
 
-::
+The child array can be selected as a property of the parent object in the
+``inhabitants`` column using ``inhabitants['property']``, where ``property`` is
+the parent object property name, like so::
 
     cr> select name, inhabitants['interests'] from locations
-    ... where inhabitants['interests'] is not null
-    ... order by name;
-    +-------------------+-------------------------------+
-    | name              | inhabitants['interests']      |
-    +-------------------+-------------------------------+
-    | Arkintoofle Minor | ["baseball", "short stories"] |
-    | Bartledan         | ["netball"]                   |
-    | Folfanga          | ["lettuce", "slime"]          |
-    +-------------------+-------------------------------+
-    SELECT 3 rows in set (... sec)
+    ... where name = 'Folfanga';
+    +----------+--------------------------+
+    | name     | inhabitants['interests'] |
+    +----------+--------------------------+
+    | Folfanga | ["lettuce", "slime"]     |
+    +----------+--------------------------+
+    SELECT 1 row in set (... sec)
 
-.. TIP::
-
-    The syntax for addressing the elements of arrays within objects is identical
-    to the syntax for querying objects within arrays.
-
-    TODO
-
-Array elements can selected with ``locations[n]['property']``, where
-``n`` is the array index and ``property`` is property name::
+The elements of the child array can be selected with
+``inhabitants[n]['property']``, where ``n`` is the child array index and
+``property`` is the parent object property name, like so::
 
     cr> select name, inhabitants[1]['interests'] from locations
-    ... where inhabitants['interests'] is not null
-    ... order by name;
-    +-------------------+-----------------------------+
-    | name              | inhabitants[1]['interests'] |
-    +-------------------+-----------------------------+
-    | Arkintoofle Minor | baseball                    |
-    | Bartledan         | netball                     |
-    | Folfanga          | lettuce                     |
-    +-------------------+-----------------------------+
-    SELECT 3 rows in set (... sec)
-
-.. TODO: this needs to use a['tags']::text[][1] syntax I think
-
-Array elements can be queried, like so::
-
-    cr> select name, inhabitants[1]['interests'] from locations
-    ... where inhabitants[1]['interests'] = 'lettuce'
-    ... order by name;
+    ... where name = 'Folfanga';
     +----------+-----------------------------+
     | name     | inhabitants[1]['interests'] |
     +----------+-----------------------------+
@@ -721,13 +692,61 @@ Array elements can be queried, like so::
     +----------+-----------------------------+
     SELECT 1 row in set (... sec)
 
+.. NOTE::
+
+    When accessing arrays within objects, the child array index comes before
+    the parent object property name (i.e., ``my_column[n]['property']``), not
+    the other way around. At the moment, the reverse syntax (i.e.,
+    ``my_column['property'][n]``) is not supported.
+
+    Note also that ``my_column[n]['property']`` syntax can reference the
+    ``property`` of a child object at index ``n`` of a parent array, if the
+    column holds :ref:`arrays instead of objects <sql_dql_object_arrays>`. This
+    makes the syntax `polymorphic`_ (i.e., behavior is inferred from the data
+    type of the column).
+
+    As an alternative, child arrays can be :ref:`type cast
+    <type_cast_from_string_literal>` to :ref:`text <data-type-text>` if you
+    want the array index to appear last::
+
+        cr> select name, inhabitants['interests']::text[][1] from locations
+        ... where name = 'Folfanga';
+        +----------+-----------------------------+
+        | name     | inhabitants[1]['interests'] |
+        +----------+-----------------------------+
+        | Folfanga | lettuce                     |
+        +----------+-----------------------------+
+        SELECT 1 row in set (... sec)
+
+.. _polymorphic: https://en.wikipedia.org/wiki/Polymorphism_(computer_science)
+
+The elements of the child array can also be addressed in the :ref:`where
+clause <sql_dql_where_clause>`, like so::
+
+    cr> select name, inhabitants from locations
+    ... where inhabitants[1]['interests'] = 'lettuce'
+    ... order by name;
+    +----------+---------------------------------------------------------------------------------------------------------------+
+    | name     | inhabitants                                                                                                   |
+    +----------+---------------------------------------------------------------------------------------------------------------+
+    | Folfanga | {"description": "A species of small slug", "interests": ["lettuce", "slime"], "name": "A-Rth-Urp-Hil-Ipdenu"} |
+    +----------+---------------------------------------------------------------------------------------------------------------+
+    SELECT 1 row in set (... sec)
+
+.. NOTE::
+
+   You can nest arrays and objects however you like, but you can only have one
+   subscript value per expression. The following won't work:
+
+   ``select my_column[1]['property'][2] from my_table;``
+
 
 .. _sql_dql_object_arrays:
 
 Object within arrays
 ====================
 
-Arrays may contain objects, and these objects can be queried and selected.
+Arrays may contain objects, and these can be selected and queried.
 
 For example, you might insert an array of objects like so::
 
@@ -744,66 +763,62 @@ For example, you might insert an array of objects like so::
     cr> refresh table locations;
     REFRESH OK, 1 row affected (... sec)
 
-::
+The result::
+
     cr> select name, information from locations
-    ... where information is not null
-    ... order by name;
-    +-------------------+-------------------------------------------------------------------------------------------+
-    | name              | information                                                                               |
-    +-------------------+-------------------------------------------------------------------------------------------+
-    | North West Ripple | [{"evolution_level": 4, "population": 12}, {"evolution_level": 42, "population": 42}]     |
-    | Orion Beta        | [{"evolution_level": 6, "population": 3600001}, {"evolution_level": 42, "population": 1}] |
-    | Outer Eastern Rim | [{"evolution_level": 2, "population": 5673745846}]                                        |
-    +-------------------+-------------------------------------------------------------------------------------------+
-    SELECT 3 rows in set (... sec)
+    ... where name = 'Orion Beta';
+    +------------+-------------------------------------------------------------------------------------------+
+    | name       | information                                                                               |
+    +------------+-------------------------------------------------------------------------------------------+
+    | Orion Beta | [{"evolution_level": 6, "population": 3600001}, {"evolution_level": 42, "population": 1}] |
+    +------------+-------------------------------------------------------------------------------------------+
+    SELECT 1 row in set (... sec)
 
-Notice that the first two rows contain multiple objects in the array.
-
-Objects inside arrays can be selected like any other array element using
-``information[n]``, where ``n`` is the array index::
+The individual child objects can be selected as an element of the parent array
+in the ``information`` column using ``locations[1]``, where ``n`` is the parent
+array index, like so::
 
     cr> select name, information[1] from locations
-    ... where information[1] is not null
-    ... order by name;
-    +-------------------+--------------------------------------------------+
-    | name              | information[1]                                   |
-    +-------------------+--------------------------------------------------+
-    | North West Ripple | {"evolution_level": 4, "population": 12}         |
-    | Orion Beta        | {"evolution_level": 6, "population": 3600001}    |
-    | Outer Eastern Rim | {"evolution_level": 2, "population": 5673745846} |
-    +-------------------+--------------------------------------------------+
-    SELECT 3 rows in set (... sec)
+    ... where name = 'Orion Beta';
+    +------------+-----------------------------------------------+
+    | name       | information[1]                                |
+    +------------+-----------------------------------------------+
+    | Orion Beta | {"evolution_level": 6, "population": 3600001} |
+    +------------+-----------------------------------------------+
+    SELECT 1 row in set (... sec)
 
-.. TODO: not sure this is accurate. see note about ambiguous syntax above
-
-Subsequently, objects properties can be selected with
-``information[n][property]``, where ``n`` is the array index and ``property``
-is the object property::
+The properties of individual child objects can be selected with
+``locations[n]['property']``, where ``n`` is the parent array index and
+``property`` is the child property name, like so::
 
     cr> select name, information[1]['population'] from locations
-    ... where information[1]['population'] is not null
-    ... order by name;
-    +-------------------+------------------------------+
-    | name              | information[1]['population'] |
-    +-------------------+------------------------------+
-    | North West Ripple |                           12 |
-    | Orion Beta        |                      3600001 |
-    | Outer Eastern Rim |                   5673745846 |
-    +-------------------+------------------------------+
-    SELECT 3 rows in set (... sec)
+    ... where name = 'Orion Beta';
+    +------------+------------------------------+
+    | name       | information[1]['population'] |
+    +------------+------------------------------+
+    | Orion Beta |                      3600001 |
+    +------------+------------------------------+
+    SELECT 1 row in set (... sec)
 
-Additionally, you can query properties of *every* object within an array by
-omitting the array index, like so::
+.. NOTE::
+
+    The ``my_column[n]['property']`` syntax can reference the child array index
+    ``n`` of a parent object ``property``, if the column holds :ref:`objects
+    instead of arrays <sql_dql_array_objects>`. This makes the syntax
+    `polymorphic`_ (i.e., behavior is inferred from the data type of the
+    column).
+
+Additionally, you can query the same ``property`` of *every* object within the
+array by omitting the array index, like so::
 
     cr> select name, information['population'] from locations
-    ... where information['population'] is not null
-    ... order by name;
+    ... where information['population'] is not null;
     +-------------------+---------------------------+
     | name              | information['population'] |
     +-------------------+---------------------------+
     | North West Ripple | [12, 42]                  |
-    | Orion Beta        | [3600001, 1]              |
     | Outer Eastern Rim | [5673745846]              |
+    | Orion Beta        | [3600001, 1]              |
     +-------------------+---------------------------+
     SELECT 3 rows in set (... sec)
 
@@ -812,7 +827,7 @@ omitting the array index, like so::
    You can nest arrays and objects however you like, but you can only have one
    subscript value per expression. The following won't work:
 
-   ``select foo[1]['bar'][1] from locations;``
+   ``select my_column[1]['property'][2] from my_table;``
 
 
 .. _sql_dql_any_array:
@@ -822,28 +837,29 @@ omitting the array index, like so::
 
 The ANY (or SOME) function allows you to query elements within arrays.
 
-For example, this query returns any row where the array ``inhabitants['interests']``
-contains the element 'netball'::
+For example, this query returns any row where the array
+``inhabitants['interests']`` contains a ``netball`` element::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where 'netball' = ANY(inhabitants['interests']);
-    +---------------------+--------------------------+
-    | inhabitants['name'] | inhabitants['interests'] |
-    +---------------------+--------------------------+
-    | Bartledannians      | ["netball"]              |
-    +---------------------+--------------------------+
-    SELECT 1 row in set (... sec)
+    +---------------------+------------------------------+
+    | inhabitants['name'] | inhabitants['interests']     |
+    +---------------------+------------------------------+
+    | Minories            | ["netball", "short stories"] |
+    | Bartledannians      | ["netball"]                  |
+    +---------------------+------------------------------+
+    SELECT 2 rows in set (... sec)
 
 This query combines the ``ANY`` function with the :ref:`LIKE <sql_dql_like>`
 operator::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where '%stories%' LIKE ANY(inhabitants['interests']);
-    +---------------------+-------------------------------+
-    | inhabitants['name'] | inhabitants['interests']      |
-    +---------------------+-------------------------------+
-    | Minories            | ["baseball", "short stories"] |
-    +---------------------+-------------------------------+
+    +---------------------+------------------------------+
+    | inhabitants['name'] | inhabitants['interests']     |
+    +---------------------+------------------------------+
+    | Minories            | ["netball", "short stories"] |
+    +---------------------+------------------------------+
     SELECT 1 row in set (... sec)
 
 This query passes a literal array value to the ``ANY`` function::
@@ -877,76 +893,53 @@ This query selects any locations with at least one (i.e., :ref:`ANY
 
     It is possible to use ``ANY`` to compare values directly against the
     properties of object arrays, as above. However, this usage is discouraged
-    as it cannot utilize the table index and results in the equivalent of a
-    table scan.
+    as it cannot utilize the table index and requires the equivalent of a table
+    scan.
 
-The ``ANY`` construct can be used in :ref:`sql_subquery_expressions` or
-:ref:`sql_array_comparisons`.
+The ``ANY`` construct can be used in :ref:`subquery expressions
+<sql_subquery_expressions>` and :ref:`array comparisons
+<sql_array_comparisons>`.
 
 
 Negating ``ANY``
 ----------------
 
-One important thing to notice when using ANY is that negating the ANY operator
-does not behave as negating normal comparison operators.
+Negating the ``ANY`` operator does not behave like other comparison operators.
 
-The following query can be translated to *get all rows where inhabitants['interests']
-has at least one element that equals 'netball'*::
-
-    cr> select inhabitants['name'], inhabitants['interests'] from locations
-    ... where 'netball' = ANY(inhabitants['interests']);
-    +---------------------+--------------------------+
-    | inhabitants['name'] | inhabitants['interests'] |
-    +---------------------+--------------------------+
-    | Bartledannians      | ["netball"]              |
-    +---------------------+--------------------------+
-    SELECT 1 row in set (... sec)
-
-The following query using the negated operator ``!=`` can be translated to *get
-all rows where inhabitants['interests'] has at least one element that does not
-equal 'netball'*. As you see, the result is the same in this case::
+The following query negates ``ANY`` using ``!=`` to return all rows where
+``inhabitants['interests']`` has *at least one* element that is not
+``netball``::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where 'netball' != ANY(inhabitants['interests']);
-    +----------------------+-------------------------------+
-    | inhabitants['name']  | inhabitants['interests']      |
-    +----------------------+-------------------------------+
-    | Minories             | ["baseball", "short stories"] |
-    | A-Rth-Urp-Hil-Ipdenu | ["lettuce", "slime"]          |
-    +----------------------+-------------------------------+
+    +----------------------+------------------------------+
+    | inhabitants['name']  | inhabitants['interests']     |
+    +----------------------+------------------------------+
+    | Minories             | ["netball", "short stories"] |
+    | A-Rth-Urp-Hil-Ipdenu | ["lettuce", "slime"]         |
+    +----------------------+------------------------------+
     SELECT 2 rows in set (... sec)
 
 .. NOTE::
 
-    When using the negated operator ``!= ANY`` by default the maximum size of
-    the array to operate on is ``8192``. To be able to use larger arrays the
+    When using the  ``!= ANY(<array_col>))`` syntax, the default maximum size
+    of the array can be 8192. To be use larger arrays, you must configure the
     :ref:`indices.query.bool.max_clause_count
-    <indices.query.bool.max_clause_count>` setting must be changed
-    appropriately on each node.
+    <indices.query.bool.max_clause_count>` setting as appropriate on each node.
 
-Negating the ``=`` query from above is totally different. It can be translated
-to *get all rows where inhabitants['interests'] has no value that equals
-'netball'*::
+Negating the same query with a preceding ``not`` returns all rows where
+``inhabitants['interests']`` has no ``netball`` element::
 
     cr> select inhabitants['name'], inhabitants['interests'] from locations
     ... where not 'netball' = ANY(inhabitants['interests']);
-    +----------------------+-------------------------------+
-    | inhabitants['name']  | inhabitants['interests']      |
-    +----------------------+-------------------------------+
-    | Minories             | ["baseball", "short stories"] |
-    | A-Rth-Urp-Hil-Ipdenu | ["lettuce", "slime"]          |
-    +----------------------+-------------------------------+
-    SELECT 2 rows in set (... sec)
+    +----------------------+--------------------------+
+    | inhabitants['name']  | inhabitants['interests'] |
+    +----------------------+--------------------------+
+    | A-Rth-Urp-Hil-Ipdenu | ["lettuce", "slime"]     |
+    +----------------------+--------------------------+
+    SELECT 1 row in set (... sec)
 
-.. TIP::
-
-    When using ``NOT <value> = ANY(<array_col>)`` the performance of the query
-    could be quite bad, because special handling is required to implement the
-    `3-valued logic`_. To achieve better performance, consider using the
-    :ref:`ignore3vl function<ignore3vl>`.
-
-The same behaviour (though different comparison operations involved) holds true
-for operators
+This behaviour applies to:
 
  - ``LIKE`` and ``NOT LIKE``
 
@@ -954,11 +947,15 @@ for operators
 
 .. NOTE::
 
-    When using the operators ``LIKE ANY`` and ``NOT LIKE ANY`` by default the
-    maximum size of the array to operate on is ``8192``. To be able to use
-    larger arrays the :ref:`indices.query.bool.max_clause_count
-    <indices.query.bool.max_clause_count>` setting must be changed
-    appropriately on each node.
+    When using the ``NOT`` with ``ANY``, the performance of the query may be
+    poor because special handling is required to implement the `3-valued
+    logic`_. For better performance, consider using the :ref:`ignore3vl
+    <ignore3vl>` function.
+
+    Additionally, When using ``NOT`` with ``LIKE ANY`` or ``NOT LIKE ANY``,
+    the default maximum size of the array can be 8192. To be use larger arrays,
+    you must configure the :ref:`indices.query.bool.max_clause_count
+    <indices.query.bool.max_clause_count>` setting as appropriate on each node.
 
 
 .. _sql_dql_aggregation:
