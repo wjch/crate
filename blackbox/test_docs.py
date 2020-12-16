@@ -124,11 +124,11 @@ def bash_transform(s):
     if s.startswith("crash"):
         s = re.search(r"crash\s+-c\s+\"(.*?)\"", s).group(1)
         return u'cmd.process({0})'.format(repr(s.strip().rstrip(';')))
-    return (r'pretty_print(sh(r"""%s""").stdout.decode("utf-8"))' % s) + '\n'
+    return (r'pretty_print(sh("""%s""").stdout.decode("utf-8"))' % s) + '\n'
 
 
 bash_parser = zc.customdoctests.DocTestParser(
-    ps1=r'sh\$', comment_prefix='#', transform=bash_transform)
+    ps1='sh\\$', comment_prefix='#', transform=bash_transform)
 
 crash_parser = zc.customdoctests.DocTestParser(
     ps1='cr>', comment_prefix='#', transform=crash_transform)
