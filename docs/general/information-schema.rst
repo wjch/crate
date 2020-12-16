@@ -295,10 +295,10 @@ table::
     | locations         | kind                           |   4 | text                     |
     | locations         | name                           |   2 | text                     |
     | locations         | position                       |   5 | integer                  |
-    | locations         | race                           |   7 | object                   |
-    | locations         | race['description']            |   8 | text                     |
-    | locations         | race['interests']              |   9 | text_array               |
-    | locations         | race['name']                   |  10 | text                     |
+    | locations         | inhabitants                    |   7 | object                   |
+    | locations         | inhabitants['description']     |   8 | text                     |
+    | locations         | inhabitants['interests']       |   9 | text_array               |
+    | locations         | inhabitants['name']            |  10 | text                     |
     | partitioned_table | date                           |   3 | timestamp with time zone |
     | partitioned_table | id                             |   1 | bigint                   |
     | partitioned_table | title                          |   2 | text                     |
