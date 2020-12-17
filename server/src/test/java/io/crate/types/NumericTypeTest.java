@@ -48,8 +48,8 @@ public class NumericTypeTest extends ESTestCase {
 
     @Test
     public void test_implicit_cast_floating_point_to_unscaled_numeric() {
-        assertThat(NumericType.INSTANCE.implicitCast(10.0d), is(BigDecimal.valueOf(10)));
-        assertThat(NumericType.INSTANCE.implicitCast(1.023f), is(BigDecimal.valueOf(1)));
+        assertThat(NumericType.INSTANCE.implicitCast(10.0d), is(BigDecimal.valueOf(10.0)));
+        assertThat(NumericType.INSTANCE.implicitCast(1.023f), is(BigDecimal.valueOf(1.023)));
     }
 
     @Test

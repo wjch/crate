@@ -41,7 +41,7 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
     public static final NumericType INSTANCE = new NumericType(null, null); // unscaled
 
     public static NumericType of(int precision) {
-        return new NumericType(precision, null);
+        return new NumericType(precision, 0);
     }
 
     public static NumericType of(int precision, int scale) {
@@ -102,25 +102,30 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
         }
 
         var mathContext = mathContextOrDefault();
+        BigDecimal bd;
         if (value instanceof Long
             || value instanceof Byte
             || value instanceof Integer
             || value instanceof Short) {
-            return new BigDecimal(
+            bd = new BigDecimal(
                 BigInteger.valueOf(((Number) value).longValue()),
                 mathContext
-            ).setScale(scaleOrDefault(), mathContext.getRoundingMode());
+            );
         } else if (value instanceof String
                    || value instanceof Float
                    || value instanceof Double
                    || value instanceof BigDecimal) {
-            return new BigDecimal(
+            bd = new BigDecimal(
                 value.toString(),
                 mathContext
-            ).setScale(scaleOrDefault(), mathContext.getRoundingMode());
+            );
         } else {
             throw new ClassCastException("Can't cast '" + value + "' to " + getName());
         }
+        if (scale != null) {
+            bd = bd.setScale(scale, mathContext.getRoundingMode());
+        }
+        return bd;
     }
 
     @Override
@@ -170,10 +175,6 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
         }
     }
 
-    private int scaleOrDefault() {
-        return Objects.requireNonNullElse(scale, 0);
-    }
-
     private boolean unscaled() {
         return precision == null;
     }
@@ -214,11 +215,11 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
     public BigDecimal readValueFrom(StreamInput in) throws IOException {
         if (in.readBoolean()) {
             byte[] bytes = in.readByteArray();
-            return new BigDecimal(
-                new BigInteger(bytes),
-                scaleOrDefault(),
-                mathContextOrDefault()
-            );
+            var bd = new BigDecimal(new BigInteger(bytes));
+            if (scale != null) {
+                bd = bd.setScale(scale, mathContextOrDefault().getRoundingMode());
+            }
+            return bd;
         } else {
             return null;
         }
@@ -238,5 +239,26 @@ public class NumericType extends DataType<BigDecimal> implements Streamer<BigDec
     public void writeTo(StreamOutput out) throws IOException {
         out.writeOptionalVInt(precision);
         out.writeOptionalVInt(scale);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        NumericType that = (NumericType) o;
+        return Objects.equals(scale, that.scale) &&
+               Objects.equals(precision, that.precision);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), scale, precision);
     }
 }
