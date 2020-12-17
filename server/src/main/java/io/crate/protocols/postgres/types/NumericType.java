@@ -148,6 +148,7 @@ class NumericType extends PGType<BigDecimal> {
         for (int i = 0; i < nDigits; i++) {
             int decDigit = buffer.readShort();
             if (decDigit > 0) {
+                // Decode 4 digits from a 16 bit short
                 for (int j = 1000; j > 0 && decDigitsIdx < sizeOfBytes; j /= 10) {
                     int d1 = (decDigit / j);
                     decDigit -= d1 * j;
@@ -160,7 +161,7 @@ class NumericType extends PGType<BigDecimal> {
         }
 
         var bd = new BigDecimal(decDigits)
-            .setScale(scale, MathContext.DECIMAL64.getRoundingMode());
+            .setScale(scale, MathContext.UNLIMITED.getRoundingMode());
         return sign == NUMERIC_NEG ? bd.negate() : bd;
     }
 
