@@ -6,7 +6,7 @@ Selecting data
 ==============
 
 Selecting (i.e., retrieving) data from CrateDB can be done by using an SQL
-ref:`SELECT <sql_reference_select>` statement. The response to a ``SELECT``
+:ref:`SELECT <sql_reference_select>` statement. The response to a ``SELECT``
 query includes the column names of the result, the result rows as a
 two-dimensional array of values, the row count, and the execution time.
 
@@ -65,7 +65,7 @@ Aliases can be used to change the output name of the columns::
 
 The ``FROM`` clause is used to reference the relation this select query is
 based upon. Can be a single table, many tables, a view, a :ref:`JOIN
-<sql_joins>` or another ref:`SELECT <sql_reference_select>` statement.
+<sql_joins>` or another :ref:`SELECT <sql_reference_select>` statement.
 
 Tables and views are referenced by schema and table name and can optionally be
 aliased.  If the relation ``t`` is only referenced by name, CrateDB assumes the
