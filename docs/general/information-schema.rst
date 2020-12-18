@@ -308,7 +308,7 @@ table::
     +-------------------+--------------------------------+-----+--------------------------+
     SELECT 19 rows in set (... sec)
 
-You can even query this tables' own columns (attention: this might lead to
+You can even query this tables own columns (attention: this might lead to
 infinite recursion of your mind, beware!)::
 
     cr> select column_name, data_type, ordinal_position
